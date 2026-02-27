@@ -1,6 +1,7 @@
 const CACHE_NAME = 'imposter-v1';
 const ASSETS = [
   'index.html',
+  'manifest.json',
   'data.json',
   'https://cdn.tailwindcss.com'
 ];
