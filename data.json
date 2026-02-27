@@ -1,27 +1,27 @@
 [
-  {
-    "word": "Espresso",
-    "category": "Drinks",
-    "hint": "Caffeine"
-  },
-  {
-    "word": "Eiffel Tower",
-    "category": "Landmarks",
-    "hint": "Paris"
-  },
-  {
-    "word": "Great White Shark",
-    "category": "Animals",
-    "hint": "Ocean"
-  },
-  {
-    "word": "Bitcoin",
-    "category": "Finance",
-    "hint": "Blockchain"
-  },
-  {
-    "word": "Batman",
-    "category": "Superheroes",
-    "hint": "Gotham"
-  }
+  { "word": "Croissant", "category": "Food", "hint": "Butter" },
+  { "word": "Sushi", "category": "Food", "hint": "Rice" },
+  { "word": "Guacamole", "category": "Food", "hint": "Dip" },
+  { "word": "Smoothie", "category": "Drinks", "hint": "Fruit" },
+  { "word": "Espresso", "category": "Drinks", "hint": "Small" },
+  { "word": "Sherlock Holmes", "category": "Characters", "hint": "Mystery" },
+  { "word": "Harry Potter", "category": "Characters", "hint": "Orphan" },
+  { "word": "Batman", "category": "Characters", "hint": "Mask" },
+  { "word": "Mickey Mouse", "category": "Characters", "hint": "Animation" },
+  { "word": "Eiffel Tower", "category": "Landmarks", "hint": "Metal" },
+  { "word": "Mount Everest", "category": "Landmarks", "hint": "Summit" },
+  { "word": "Colosseum", "category": "Landmarks", "hint": "Arena" },
+  { "word": "Statue of Liberty", "category": "Landmarks", "hint": "Copper" },
+  { "word": "Instagram", "category": "Technology", "hint": "Filters" },
+  { "word": "Netflix", "category": "Technology", "hint": "Red" },
+  { "word": "Bitcoin", "category": "Technology", "hint": "Risky" },
+  { "word": "Tesla", "category": "Technology", "hint": "Battery" },
+  { "word": "Kangaroo", "category": "Animals", "hint": "Bounce" },
+  { "word": "Penguin", "category": "Animals", "hint": "Swimmers" },
+  { "word": "Great White Shark", "category": "Animals", "hint": "Ocean" },
+  { "word": "Backpack", "category": "Objects", "hint": "Travel" },
+  { "word": "Microscope", "category": "Objects", "hint": "Science" },
+  { "word": "Telescope", "category": "Objects", "hint": "Distance" },
+  { "word": "Chess", "category": "Hobbies", "hint": "Board" },
+  { "word": "Karaoke", "category": "Hobbies", "hint": "Microphone" }
 ]
