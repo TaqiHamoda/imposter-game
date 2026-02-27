@@ -1,6 +1,27 @@
 [
-	{ "word": "Pizza", "category": "Food", "hint": "Italy" },
-	{ "word": "Dinosaur", "category": "History", "hint": "Museum" },
-	{ "word": "Submarine", "category": "Transport", "hint": "Yellow" },
-	{ "word": "Volcano", "category": "Nature", "hint": "Magma" },
+  {
+    "word": "Espresso",
+    "category": "Drinks",
+    "hint": "Caffeine"
+  },
+  {
+    "word": "Eiffel Tower",
+    "category": "Landmarks",
+    "hint": "Paris"
+  },
+  {
+    "word": "Great White Shark",
+    "category": "Animals",
+    "hint": "Ocean"
+  },
+  {
+    "word": "Bitcoin",
+    "category": "Finance",
+    "hint": "Blockchain"
+  },
+  {
+    "word": "Batman",
+    "category": "Superheroes",
+    "hint": "Gotham"
+  }
 ]
