@@ -26,6 +26,14 @@ The primary inspiration for this project was the frustration caused by poor Rand
 3.  **The Discussion:** The designated "Starter" begins the conversation. Innocents must describe the word without being too obvious, while Imposters must bluff their way through.
 4.  **The Vote:** Discuss, argue, and find the liar!
 
+## 📱 Installation (PWA)
+**Imposter Words** is a Progressive Web App, meaning you can install it directly onto your home screen for an app-like experience without using an app store.
+
+### How to Install:
+* **On Android (Chrome):** Tap the three dots (⋮) on the right side of the address bar and select **"Add to Home Screen"**.
+* **On iOS (Safari):** Tap the **Share** button (square with an up arrow) at the bottom of the screen, scroll down, and tap **"Add to Home Screen"**.
+* **On Desktop:** Click the **Install** icon in the right side of the address bar.
+
 ## 🤝 Contributing
 I am always looking for new, creative word additions! If you have ideas for words that fit the "specific but recognizable" criteria (like *Espresso*, *Bitcoin*, or *Batman*), please contribute.
 
