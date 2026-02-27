@@ -1,5 +1,7 @@
 # 🕵️ Imposter Words: Strategy Edition
 
+**Play the game here: [https://taqihamoda.github.io/imposter-game/](https://taqihamoda.github.io/imposter-game/)**
+
 A strategic, web-based pass-and-play game designed to challenge your bluffing skills and social deduction. Unlike traditional imposter games, **Imposter Words** is built with a focus on fairness and player engagement.
 
 ## 🚀 The Motivation: Fair Play
