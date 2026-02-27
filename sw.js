@@ -3,6 +3,8 @@ const ASSETS = [
   'index.html',
   'manifest.json',
   'data.json',
+  'icon-512.png',
+  'icon-192.png',
   'https://cdn.tailwindcss.com'
 ];
 
