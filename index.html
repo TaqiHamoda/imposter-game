@@ -398,12 +398,9 @@
             
             const minusBtn = document.getElementById('imp-minus');
             const plusBtn = document.getElementById('imp-plus');
-            
-            minusBtn.disabled = gameConfig.imposterCount <= 1;
-            plusBtn.disabled = gameConfig.imposterCount >= max;
-            
-            minusBtn.className = `w-8 h-8 rounded-lg font-bold transition-all ${minusBtn.disabled ? "bg-slate-800 text-slate-600 opacity-50 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-600 active:scale-90"}`;
-            plusBtn.className = `w-8 h-8 rounded-lg font-bold transition-all ${plusBtn.disabled ? "bg-slate-800 text-slate-600 opacity-50 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-600 active:scale-90"}`;
+
+            minusBtn.className = `w-8 h-8 rounded-lg font-bold transition-all ${gameConfig.imposterCount <= 1 ? "bg-slate-800 text-slate-600 opacity-50 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-600 active:scale-90"}`;
+            plusBtn.className = `w-8 h-8 rounded-lg font-bold transition-all ${gameConfig.imposterCount >= max ? "bg-slate-800 text-slate-600 opacity-50 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-600 active:scale-90"}`;
             
             document.getElementById('imposter-count-display').innerText = gameConfig.imposterCount;
         }
@@ -411,6 +408,12 @@
         function changeImposterCount(dir) {
             const n = players.length;
             const max = Math.max(1, Math.floor(n / 2) - 1);
+            
+            if (dir === 1 && gameConfig.imposterCount >= max) {
+                showToast(`Max Imposters reached: Must be less than half of players (${max})`);
+                return;
+            }
+            
             let next = gameConfig.imposterCount + dir;
             if (next < 1) next = 1;
             if (next > max) next = max;
