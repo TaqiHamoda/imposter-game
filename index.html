@@ -265,304 +265,367 @@
     <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white text-black px-6 py-3 rounded-full text-sm font-black opacity-0 transition-all pointer-events-none shadow-2xl z-50">MESSAGE</div>
 
     <script>
-        let players = [];
-        let wordPool = [];
-        let gameConfig = { imposterCount: 1, showCategory: true, showHint: false };
-        let currentRound = { imposters: [], word: null, starter: null };
-        let lastImposterNames = JSON.parse(localStorage.getItem('imp_last_names') || '[]');
-        let currentPlayerIndex = 0;
-        let isStatsVisible = false;
+    let players = [];
+    let wordPool = [];
+    let gameConfig = { imposterCount: 1, showCategory: true, showHint: false };
+    let currentRound = { imposters: [], word: null, starter: null };
+    let lastImposterNames = JSON.parse(localStorage.getItem('imp_last_names') || '[]');
+    let currentPlayerIndex = 0;
+    let isStatsVisible = false;
+    let isRoundFinalized = false; // Safeguard against multiple counting clicks
 
-        const defaultWords = [
-            { word: "Espresso", category: "Drinks", hint: "Small" },
-            { word: "Eiffel Tower", category: "Landmarks", hint: "Metal" },
-            { word: "Great White Shark", category: "Animals", hint: "Ocean" },
-            { word: "Bitcoin", category: "Finance", hint: "Risky" },
-            { word: "Starwars", category: "Movies", hint: "Aliens" }
-        ];
+    const defaultWords = [
+        { word: "Espresso", category: "Drinks", hint: "Small" },
+        { word: "Eiffel Tower", category: "Landmarks", hint: "Metal" },
+        { word: "Great White Shark", category: "Animals", hint: "Ocean" },
+        { word: "Bitcoin", category: "Finance", hint: "Risky" },
+        { word: "Starwars", category: "Movies", hint: "Aliens" }
+    ];
 
-        window.onload = async () => {
-            const savedPlayers = localStorage.getItem('imp_p_v5');
-            const savedWords = localStorage.getItem('imp_w_v5');
-            
-            if (savedPlayers) players = JSON.parse(savedPlayers);            
-            if (savedWords) wordPool = JSON.parse(savedWords);
+    window.onload = async () => {
+        const savedPlayers = localStorage.getItem('imp_p_v5');
+        const savedWords = localStorage.getItem('imp_w_v5');
+        
+        if (savedPlayers) players = JSON.parse(savedPlayers);            
+        if (savedWords) wordPool = JSON.parse(savedWords);
 
-            // Priority: Local Storage > data.json > defaultWords
-            if (wordPool.length < 1) {
-                try {
-                    const response = await fetch('data.json');
-                    if (response.ok) {
-                        const jsonData = await response.json();
-                        if (Array.isArray(jsonData) && jsonData.length > 0) {
-                            wordPool = jsonData;
-                        } else {
-                            wordPool = [...defaultWords];
-                        }
-                    } else {
-                        wordPool = [...defaultWords];
-                    }
-                } catch (e) {
+        if (wordPool.length < 1) {
+            try {
+                const response = await fetch('data.json');
+                if (response.ok) {
+                    const jsonData = await response.json();
+                    wordPool = (Array.isArray(jsonData) && jsonData.length > 0) ? jsonData : [...defaultWords];
+                } else {
                     wordPool = [...defaultWords];
                 }
+            } catch (e) {
+                wordPool = [...defaultWords];
             }
-            
-            updatePlayerList();
-            updateWordList();
-            updateStats();
-            updateRecentHighlight();
-        };
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.innerText = msg;
-            toast.style.opacity = '1';
-            toast.style.transform = 'translate(-50%, -10px)';
-            setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translate(-50%, 0)'; }, 2000);
         }
+        
+        updatePlayerList();
+        updateWordList();
+        updateStats();
+        updateRecentHighlight();
+        setupKeyboardListeners();
+    };
 
-        // --- SETUP LOGIC ---
-        function addPlayer() {
-            const input = document.getElementById('player-input');
-            const name = input.value.trim();
-            if (!name) return;
-            if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) return showToast("Name taken!");
-            players.push({ id: Date.now() + Math.random(), name: name, imposterCount: 0 });
-            input.value = '';
-            updatePlayerList();
-            updateStats();
-            saveData();
-        }
-
-        function removePlayer(id) {
-            players = players.filter(p => p.id !== id);
-            updatePlayerList();
-            updateStats();
-            saveData();
-        }
-
-        function updatePlayerList() {
-            const list = document.getElementById('player-list');
-            list.innerHTML = '';
-            players.forEach(p => {
-                const span = document.createElement('div');
-                span.className = "flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-xl text-sm border border-slate-700 shadow-sm";
-                span.innerHTML = `${p.name} <button onclick="removePlayer(${p.id})" class="text-slate-500 hover:text-red-500 font-bold ml-1">&times;</button>`;
-                list.appendChild(span);
+    function setupKeyboardListeners() {
+        document.getElementById('player-input')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addPlayer();
+        });
+        ['word-input', 'category-input', 'hint-input'].forEach(id => {
+            document.getElementById(id)?.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') addWord();
             });
-            updateImposterLimit();
-            checkStartAvailability();
+        });
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.innerText = msg;
+        toast.style.opacity = '1';
+        toast.style.transform = 'translate(-50%, -10px)';
+        setTimeout(() => { 
+            toast.style.opacity = '0'; 
+            toast.style.transform = 'translate(-50%, 0)'; 
+        }, 2000);
+    }
+
+    // --- ESCAPE HELPER TO PREVENT XSS ---
+    function escapeHTML(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // --- SETUP LOGIC ---
+    function addPlayer() {
+        const input = document.getElementById('player-input');
+        const name = input.value.trim();
+        if (!name) return;
+        if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+            return showToast("Name already taken!");
+        }
+        
+        // Robust string ID generation
+        const safeId = 'p_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        players.push({ id: safeId, name: name, imposterCount: 0 });
+        
+        input.value = '';
+        updatePlayerList();
+        updateStats();
+        saveData();
+    }
+
+    function removePlayer(id) {
+        players = players.filter(p => p.id !== id);
+        updatePlayerList();
+        updateStats();
+        saveData();
+    }
+
+    function updatePlayerList() {
+        const list = document.getElementById('player-list');
+        list.innerHTML = '';
+        players.forEach(p => {
+            const span = document.createElement('div');
+            span.className = "flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-xl text-sm border border-slate-700 shadow-sm";
+            span.innerHTML = `${escapeHTML(p.name)} <button onclick="removePlayer('${p.id}')" class="text-slate-500 hover:text-red-500 font-bold ml-1">&times;</button>`;
+            list.appendChild(span);
+        });
+        updateImposterLimit();
+        checkStartAvailability();
+    }
+
+    function addWord() {
+        const wInput = document.getElementById('word-input');
+        const cInput = document.getElementById('category-input');
+        const hInput = document.getElementById('hint-input');
+        
+        const wVal = wInput.value.trim();
+        const cVal = cInput.value.trim();
+        const hVal = hInput.value.trim();
+
+        if (!wVal || !cVal || !hVal) {
+            return showToast("Fill all word fields!");
+        }
+        if (wordPool.some(item => item.word.toLowerCase() === wVal.toLowerCase())) {
+            return showToast("Word already exists in pool!");
         }
 
-        function addWord() {
-            const w = document.getElementById('word-input');
-            const c = document.getElementById('category-input');
-            const h = document.getElementById('hint-input');
-            if (!w.value || !c.value || !h.value) return showToast("Fill all word fields!");
-            wordPool.push({ word: w.value.trim(), category: c.value.trim(), hint: h.value.trim() });
-            w.value = ''; c.value = ''; h.value = '';
-            updateWordList();
-            saveData();
-        }
+        wordPool.push({ word: wVal, category: cVal, hint: hVal });
+        wInput.value = ''; cInput.value = ''; hInput.value = '';
+        
+        updateWordList();
+        saveData();
+        wInput.focus();
+    }
 
-        function removeWord(index) {
-            wordPool.splice(index, 1);
-            updateWordList();
-            saveData();
-        }
+    function removeWord(index) {
+        wordPool.splice(index, 1);
+        updateWordList();
+        saveData();
+    }
 
-        function useDefaultWords() {
-            wordPool = [...defaultWords];
-            updateWordList();
-            saveData();
-            showToast("Defaults loaded");
-        }
+    function useDefaultWords() {
+        wordPool = [...defaultWords];
+        updateWordList();
+        saveData();
+        showToast("Defaults loaded");
+    }
 
-        function updateWordList() {
-            const list = document.getElementById('word-list');
-            list.innerHTML = '';
-            wordPool.forEach((w, idx) => {
-                const div = document.createElement('div');
-                div.className = "flex items-center gap-2 bg-blue-900/20 text-blue-300 px-3 py-1.5 rounded-lg text-xs border border-blue-800/30";
-                div.innerHTML = `<span title="${w.category} / ${w.hint}">${w.word}</span> <button onclick="removeWord(${idx})" class="text-blue-600 hover:text-red-400 font-bold ml-1">&times;</button>`;
-                list.appendChild(div);
-            });
-            document.getElementById('word-count').innerText = `${wordPool.length} Words`;
-            checkStartAvailability();
-        }
+    function updateWordList() {
+        const list = document.getElementById('word-list');
+        list.innerHTML = '';
+        wordPool.forEach((w, idx) => {
+            const div = document.createElement('div');
+            div.className = "flex items-center gap-2 bg-blue-900/20 text-blue-300 px-3 py-1.5 rounded-lg text-xs border border-blue-800/30";
+            div.innerHTML = `<span title="${escapeHTML(w.category)} / ${escapeHTML(w.hint)}">${escapeHTML(w.word)}</span> <button onclick="removeWord(${idx})" class="text-blue-600 hover:text-red-400 font-bold ml-1">&times;</button>`;
+            list.appendChild(div);
+        });
+        document.getElementById('word-count').innerText = `${wordPool.length} Words`;
+        checkStartAvailability();
+    }
 
-        function updateImposterLimit() {
-            const n = players.length;
-            const max = Math.max(1, Math.floor(n / 2) - 1);
-            if (gameConfig.imposterCount > max) gameConfig.imposterCount = max;
+    function updateImposterLimit() {
+        const n = players.length;
+        const max = Math.max(1, Math.floor(n / 2) - 1);
+        if (gameConfig.imposterCount > max) gameConfig.imposterCount = max;
+        
+        const minusBtn = document.getElementById('imp-minus');
+        const plusBtn = document.getElementById('imp-plus');
+
+        minusBtn.className = `w-8 h-8 rounded-lg font-bold transition-all ${gameConfig.imposterCount <= 1 ? "bg-slate-800 text-slate-600 opacity-50 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-600 active:scale-90"}`;
+        plusBtn.className = `w-8 h-8 rounded-lg font-bold transition-all ${gameConfig.imposterCount >= max ? "bg-slate-800 text-slate-600 opacity-50 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-600 active:scale-90"}`;
+        
+        document.getElementById('imposter-count-display').innerText = gameConfig.imposterCount;
+    }
+
+    function changeImposterCount(dir) {
+        const n = players.length;
+        const max = Math.max(1, Math.floor(n / 2) - 1);
+        
+        if (dir === 1 && gameConfig.imposterCount >= max) {
+            showToast("Max Imposters reached: Must be less than half of players.");
+            return;
+        }
+        
+        let next = gameConfig.imposterCount + dir;
+        if (next < 1) next = 1;
+        if (next > max) next = max;
+        gameConfig.imposterCount = next;
+        updateImposterLimit();
+    }
+
+    function checkStartAvailability() {
+        const btn = document.getElementById('start-btn');
+        const isValid = players.length >= 3 && wordPool.length >= 1;
+        btn.disabled = !isValid;
+    }
+
+    // --- UNBIASED ARRAY SHUFFLE ---
+    function shuffleArray(array) {
+        let curId = array.length;
+        while (0 !== curId) {
+            let randId = Math.floor(Math.random() * curId);
+            curId -= 1;
+            let tmp = array[curId];
+            array[curId] = array[randId];
+            array[randId] = tmp;
+        }
+        return array;
+    }
+
+    // --- GAMEPLAY ENGINE ---
+    function pickImposters(count) {
+        let pool = [...players];
+        let picks = [];
+        for (let i = 0; i < count; i++) {
+            if (pool.length === 0) break;
+            const maxStat = Math.max(...pool.map(p => p.imposterCount), 1);
+            const weights = pool.map(p => ({ id: p.id, w: Math.pow(2.5, maxStat - p.imposterCount) }));
+            const total = weights.reduce((a, b) => a + b.w, 0);
             
-            const minusBtn = document.getElementById('imp-minus');
-            const plusBtn = document.getElementById('imp-plus');
-
-            minusBtn.className = `w-8 h-8 rounded-lg font-bold transition-all ${gameConfig.imposterCount <= 1 ? "bg-slate-800 text-slate-600 opacity-50 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-600 active:scale-90"}`;
-            plusBtn.className = `w-8 h-8 rounded-lg font-bold transition-all ${gameConfig.imposterCount >= max ? "bg-slate-800 text-slate-600 opacity-50 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-600 active:scale-90"}`;
+            let r = Math.random() * total;
+            // Guarantee a non-null pick fallback for IEEE floating-point rounding precision safety
+            let pick = weights[weights.length - 1].id; 
             
-            document.getElementById('imposter-count-display').innerText = gameConfig.imposterCount;
-        }
-
-        function changeImposterCount(dir) {
-            const n = players.length;
-            const max = Math.max(1, Math.floor(n / 2) - 1);
-            
-            if (dir === 1 && gameConfig.imposterCount >= max) {
-                showToast(`Max Imposters reached: Must be less than half of players.`);
-                return;
-            }
-            
-            let next = gameConfig.imposterCount + dir;
-            if (next < 1) next = 1;
-            if (next > max) next = max;
-            gameConfig.imposterCount = next;
-            updateImposterLimit();
-        }
-
-        function checkStartAvailability() {
-            const btn = document.getElementById('start-btn');
-            const isValid = players.length >= 3 && wordPool.length >= 1;
-            btn.disabled = !isValid;
-        }
-
-        // --- GAMEPLAY ENGINE ---
-        function pickImposters(count) {
-            let pool = [...players];
-            let picks = [];
-            for (let i = 0; i < count; i++) {
-                if (pool.length === 0) break;
-                const maxStat = Math.max(...pool.map(p => p.imposterCount), 1);
-                const weights = pool.map(p => ({ id: p.id, w: Math.pow(2.5, maxStat - p.imposterCount) }));
-                const total = weights.reduce((a, b) => a + b.w, 0);
-                let r = Math.random() * total;
-                let pick = null;
-                for (let item of weights) {
-                    if (r < item.w) { pick = item.id; break; }
-                    r -= item.w;
+            for (let item of weights) {
+                if (r < item.w) { 
+                    pick = item.id; 
+                    break; 
                 }
-                picks.push(pick);
-                pool = pool.filter(p => p.id !== pick);
+                r -= item.w;
             }
-            return picks;
+            picks.push(pick);
+            pool = pool.filter(p => p.id !== pick);
         }
+        return picks;
+    }
 
-        function startGame() {
-            gameConfig.showCategory = document.getElementById('set-show-category').checked;
-            gameConfig.showHint = document.getElementById('set-show-hint').checked;
-            
-            currentRound.imposters = pickImposters(gameConfig.imposterCount);
-            currentRound.word = wordPool[Math.floor(Math.random() * wordPool.length)];
-            currentRound.starter = players[Math.floor(Math.random() * players.length)];
-            
-            currentPlayerIndex = 0;
-            players = players.sort(() => Math.random() - 0.5);
-            
-            document.getElementById('view-setup').classList.add('hidden');
-            document.getElementById('view-reveal').classList.remove('hidden');
-            document.getElementById('leaderboard-section').classList.add('hidden');
-            showPlayerReveal();
-        }
+    function startGame() {
+        gameConfig.showCategory = document.getElementById('set-show-category').checked;
+        gameConfig.showHint = document.getElementById('set-show-hint').checked;
+        
+        isRoundFinalized = false; // Reset lock
+        
+        currentRound.imposters = pickImposters(gameConfig.imposterCount);
+        currentRound.word = wordPool[Math.floor(Math.random() * wordPool.length)];
+        currentRound.starter = players[Math.floor(Math.random() * players.length)];
+        
+        currentPlayerIndex = 0;
+        players = shuffleArray([...players]);
+        
+        document.getElementById('view-setup').classList.add('hidden');
+        document.getElementById('view-reveal').classList.remove('hidden');
+        document.getElementById('leaderboard-section').classList.add('hidden');
+        showPlayerReveal();
+    }
 
-        function showPlayerReveal() {
-            if (currentPlayerIndex >= players.length) return finalizeGame();
-            const p = players[currentPlayerIndex];
-            document.getElementById('current-player-name').innerText = p.name;
-            document.getElementById('reveal-instructions').classList.remove('hidden');
-            document.getElementById('secret-role').classList.add('hidden');
-            document.getElementById('reveal-header-nav').classList.add('opacity-0', 'pointer-events-none');
-        }
+    function showPlayerReveal() {
+        if (currentPlayerIndex >= players.length) return finalizeGame();
+        const p = players[currentPlayerIndex];
+        document.getElementById('current-player-name').innerText = p.name;
+        document.getElementById('reveal-instructions').classList.remove('hidden');
+        document.getElementById('secret-role').classList.add('hidden');
+        document.getElementById('reveal-header-nav').classList.add('opacity-0', 'pointer-events-none');
+    }
 
-        function toggleSecret() {
-            const p = players[currentPlayerIndex];
-            const isImp = currentRound.imposters.includes(p.id);
-            const roleCard = document.getElementById('role-card');
-            
-            document.getElementById('role-text').innerText = isImp ? "IMPOSTER" : "INNOCENT";
-            roleCard.className = `p-10 rounded-[2rem] shadow-2xl w-full ${isImp ? 'imposter-gradient animate-pulse-red' : 'innocent-gradient'}`;
+    function toggleSecret() {
+        const p = players[currentPlayerIndex];
+        const isImp = currentRound.imposters.includes(p.id);
+        const roleCard = document.getElementById('role-card');
+        
+        document.getElementById('role-text').innerText = isImp ? "IMPOSTER" : "INNOCENT";
+        roleCard.className = `p-10 rounded-[2rem] shadow-2xl w-full ${isImp ? 'imposter-gradient animate-pulse-red' : 'innocent-gradient'}`;
 
-            document.getElementById('reveal-word-box').classList.toggle('hidden', isImp);
-            document.getElementById('reveal-category-box').classList.toggle('hidden', isImp && !gameConfig.showCategory);
-            document.getElementById('reveal-hint-box').classList.toggle('hidden', !isImp || !gameConfig.showHint);
+        document.getElementById('reveal-word-box').classList.toggle('hidden', isImp);
+        document.getElementById('reveal-category-box').classList.toggle('hidden', isImp && !gameConfig.showCategory);
+        document.getElementById('reveal-hint-box').classList.toggle('hidden', !isImp || !gameConfig.showHint);
 
-            document.getElementById('reveal-word-val').innerText = currentRound.word.word;
-            document.getElementById('reveal-category-val').innerText = currentRound.word.category;
-            document.getElementById('reveal-hint-val').innerText = currentRound.word.hint;
+        document.getElementById('reveal-word-val').innerText = currentRound.word.word;
+        document.getElementById('reveal-category-val').innerText = currentRound.word.category;
+        document.getElementById('reveal-hint-val').innerText = currentRound.word.hint;
 
-            document.getElementById('reveal-instructions').classList.add('hidden');
-            document.getElementById('secret-role').classList.remove('hidden');
-            document.getElementById('reveal-header-nav').classList.remove('opacity-0', 'pointer-events-none');
-        }
+        document.getElementById('reveal-instructions').classList.add('hidden');
+        document.getElementById('secret-role').classList.remove('hidden');
+        document.getElementById('reveal-header-nav').classList.remove('opacity-0', 'pointer-events-none');
+    }
 
-        function nextPlayer() {
-            currentPlayerIndex++;
-            showPlayerReveal();
-        }
+    function nextPlayer() {
+        currentPlayerIndex++;
+        showPlayerReveal();
+    }
 
-        function finalizeGame() {
-            lastImposterNames = [];
-            currentRound.imposters.forEach(id => {
-                const p = players.find(p => p.id === id);
-                if (p) {
-                    p.imposterCount++;
-                    lastImposterNames.push(p.name);
-                }
-            });
-            saveData(); 
-            updateStats();
-            updateRecentHighlight();
-            document.getElementById('view-reveal').classList.add('hidden');
-            document.getElementById('view-match-start').classList.remove('hidden');
-            document.getElementById('starter-name-display').innerText = currentRound.starter.name;
-        }
+    function finalizeGame() {
+        if (isRoundFinalized) return;
+        isRoundFinalized = true;
 
-        function backToSetup() {
-            document.getElementById('view-match-start').classList.add('hidden');
-            document.getElementById('view-setup').classList.remove('hidden');
-            document.getElementById('leaderboard-section').classList.remove('hidden');
-        }
-
-        function toggleStats() {
-            isStatsVisible = !isStatsVisible;
-            document.getElementById('stats-container').classList.toggle('hidden', !isStatsVisible);
-            document.getElementById('toggle-text').innerText = isStatsVisible ? "Hide Leaderboard" : "Show Fairness Leaderboard";
-            document.getElementById('toggle-icon').innerText = isStatsVisible ? "▲" : "▼";
-        }
-
-        function updateRecentHighlight() {
-            const box = document.getElementById('recent-imposter-box');
-            const namesDisp = document.getElementById('last-imposter-names');
-            if (lastImposterNames && lastImposterNames.length > 0) {
-                box.classList.remove('hidden');
-                namesDisp.innerText = lastImposterNames.join(", ");
-            } else {
-                box.classList.add('hidden');
+        lastImposterNames = [];
+        currentRound.imposters.forEach(id => {
+            const p = players.find(p => p.id === id);
+            if (p) {
+                p.imposterCount++;
+                lastImposterNames.push(p.name);
             }
-        }
+        });
+        saveData(); 
+        updateStats();
+        updateRecentHighlight();
+        document.getElementById('view-reveal').classList.add('hidden');
+        document.getElementById('view-match-start').classList.remove('hidden');
+        document.getElementById('starter-name-display').innerText = currentRound.starter ? currentRound.starter.name : "Anyone";
+    }
 
-        function updateStats() {
-            const list = document.getElementById('stats-list');
-            list.innerHTML = '';
-            [...players].sort((a,b) => b.imposterCount - a.imposterCount).forEach(p => {
-                const div = document.createElement('div');
-                div.className = "bg-slate-900/50 p-3 rounded-xl border border-slate-800 text-center";
-                div.innerHTML = `<div class="text-[10px] text-slate-500 font-bold uppercase">${p.name}</div><div class="text-2xl font-black ${p.imposterCount > 0 ? 'text-red-500' : 'text-slate-700'}">${p.imposterCount}</div>`;
-                list.appendChild(div);
-            });
-        }
+    function backToSetup() {
+        document.getElementById('view-match-start').classList.add('hidden');
+        document.getElementById('view-setup').classList.remove('hidden');
+        document.getElementById('leaderboard-section').classList.remove('hidden');
+    }
 
-        function saveData() {
-            localStorage.setItem('imp_p_v5', JSON.stringify(players));
-            localStorage.setItem('imp_w_v5', JSON.stringify(wordPool));
-            localStorage.setItem('imp_last_names', JSON.stringify(lastImposterNames));
-        }
+    function toggleStats() {
+        isStatsVisible = !isStatsVisible;
+        document.getElementById('stats-container').classList.toggle('hidden', !isStatsVisible);
+        document.getElementById('toggle-text').innerText = isStatsVisible ? "Hide Leaderboard" : "Show Fairness Leaderboard";
+        document.getElementById('toggle-icon').innerText = isStatsVisible ? "▲" : "▼";
+    }
 
-        function resetAll() {
-            if (confirm("Wipe everything? This will reset all players, words, and history.")) {
-                localStorage.clear(); location.reload();
-            }
+    function updateRecentHighlight() {
+        const box = document.getElementById('recent-imposter-box');
+        const namesDisp = document.getElementById('last-imposter-names');
+        if (lastImposterNames && lastImposterNames.length > 0) {
+            box.classList.remove('hidden');
+            namesDisp.innerText = lastImposterNames.join(", ");
+        } else {
+            box.classList.add('hidden');
         }
-    </script>
+    }
+
+    function updateStats() {
+        const list = document.getElementById('stats-list');
+        list.innerHTML = '';
+        [...players].sort((a,b) => b.imposterCount - a.imposterCount).forEach(p => {
+            const div = document.createElement('div');
+            div.className = "bg-slate-900/50 p-3 rounded-xl border border-slate-800 text-center";
+            div.innerHTML = `<div class="text-[10px] text-slate-500 font-bold uppercase">${escapeHTML(p.name)}</div><div class="text-2xl font-black ${p.imposterCount > 0 ? 'text-red-500' : 'text-slate-700'}">${p.imposterCount}</div>`;
+            list.appendChild(div);
+        });
+    }
+
+    function saveData() {
+        localStorage.setItem('imp_p_v5', JSON.stringify(players));
+        localStorage.setItem('imp_w_v5', JSON.stringify(wordPool));
+        localStorage.setItem('imp_last_names', JSON.stringify(lastImposterNames));
+    }
+
+    function resetAll() {
+        if (confirm("Wipe everything? This will reset all players, words, and history.")) {
+            localStorage.clear(); 
+            location.reload();
+        }
+    }
+</script>
+
 </body>
 </html>
